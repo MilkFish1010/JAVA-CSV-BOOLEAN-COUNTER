@@ -1,11 +1,11 @@
-##HOW TO RUN##
+## HOW TO RUN
 
-#Console
+# Console
 '''cd path/to/your/file'''
-#Compile
+# Compile
 '''javac GroupBooleanCounter.java'''
-#Console output
+# Console output
 '''java GroupBooleanCounter your-dataset-csv.csv'''
-#Windowed output
-'''java GroupBooleanCounter'''
+# Windowed output
+```java GroupBooleanCounter```
 locate the path to your csv
