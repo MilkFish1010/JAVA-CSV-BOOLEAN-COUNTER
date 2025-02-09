@@ -2,19 +2,23 @@ import java.awt.*;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import javax.swing.*;
 
 public class GroupBooleanCounter {
+    private static JFrame mainFrame;
+    private static CardLayout cardLayout;
+    private static JPanel cardPanel;
+    private static JLabel trueCountLabel;
+    private static JLabel falseCountLabel;
+    private static JLabel totalBooleansLabel;
+    private static JLabel resultsTitleLabel;  // Added for dynamic title
+
     public static void main(String[] args) {
         if (args.length > 0) {
-            // Console mode
             runConsoleMode(args[0]);
         } else {
-            // GUI mode
             SwingUtilities.invokeLater(GroupBooleanCounter::runGuiMode);
         }
     }
@@ -29,133 +33,212 @@ public class GroupBooleanCounter {
     }
 
     private static void printConsoleResults(Map<String, Integer> results) {
-        System.out.println("Boolean Value Counts:");
-        results.forEach((k, v) -> System.out.println(k + " -> " + v));
+        int trueCount = results.getOrDefault("True Count", 0);
+        int falseCount = results.getOrDefault("False Count", 0);
+        int total = trueCount + falseCount;
+        
+        System.out.println("True Count: " + trueCount);
+        System.out.println("False Count: " + falseCount);
+        System.out.println("Total Booleans: " + total);
     }
 
     private static void runGuiMode() {
-        JFileChooser fileChooser = new JFileChooser();
-        if (fileChooser.showOpenDialog(null) != JFileChooser.APPROVE_OPTION) {
-            JOptionPane.showMessageDialog(null, "No file selected", "Error", JOptionPane.ERROR_MESSAGE);
-            return;
-        }
+        mainFrame = new JFrame("Boolean Counter");
+        mainFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        mainFrame.setPreferredSize(new Dimension(1024, 768));
         
-        String filePath = fileChooser.getSelectedFile().getAbsolutePath();
-        try {
-            Map<String, Integer> results = BooleanCounterEngine.processCSVFile(filePath);
-            showGuiResults(results);
-        } catch (IOException | IllegalArgumentException e) {
-            JOptionPane.showMessageDialog(null, e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+        cardLayout = new CardLayout();
+        cardPanel = new JPanel(cardLayout);
+
+        cardPanel.add(createTitlePanel(), "title");
+        cardPanel.add(createResultsPanel(), "results");
+
+        mainFrame.add(cardPanel);
+        mainFrame.pack();
+        mainFrame.setExtendedState(JFrame.MAXIMIZED_BOTH);
+        mainFrame.setVisible(true);
+    }
+
+    private static JPanel createTitlePanel() {
+        JPanel panel = new JPanel(new GridBagLayout());
+        panel.setBackground(new Color(245, 245, 245));
+
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.gridwidth = GridBagConstraints.REMAINDER;
+        gbc.anchor = GridBagConstraints.CENTER;
+        gbc.insets = new Insets(10, 20, 10, 20);
+
+        JLabel titleLabel = new JLabel("Boolean Counter");
+        titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 48));
+        ImageIcon icon = new ImageIcon("cat-icon.png");
+        Image scaledImg = icon.getImage().getScaledInstance(32, 32, Image.SCALE_SMOOTH);
+        titleLabel.setIcon(new ImageIcon(scaledImg));
+        titleLabel.setForeground(new Color(0, 0, 0));
+        panel.add(titleLabel, gbc);
+
+        JLabel creatorLabel = new JLabel("Created by Hoby Josol");
+        creatorLabel.setFont(new Font("Segoe UI", Font.ITALIC, 24));
+        creatorLabel.setForeground(new Color(128, 128, 128));
+        panel.add(creatorLabel, gbc);
+
+        JLabel descriptionLabel = new JLabel("<html><div style='text-align: center; width: 600px;'>"
+                + "This program analyzes CSV files and counts the number of 'true' and 'false' values.<br>"
+                + "Simply upload a CSV file using the button below to get started.</div></html>");
+        descriptionLabel.setFont(new Font("Segoe UI", Font.PLAIN, 18));
+        descriptionLabel.setForeground(new Color(80, 80, 80));
+        panel.add(descriptionLabel, gbc);
+
+        JButton uploadButton = new JButton("Upload CSV");
+        styleUploadButton(uploadButton);
+        uploadButton.addActionListener(e -> handleFileUpload(panel));
+        panel.add(uploadButton, gbc);
+
+        return panel;
+    }
+
+    private static void styleUploadButton(JButton button) {
+        button.setFont(new Font("Segoe UI", Font.PLAIN, 24));
+        button.setPreferredSize(new Dimension(300, 80));
+        button.setBackground(new Color(108, 117, 125));
+        button.setForeground(Color.WHITE);
+        button.setFocusPainted(false);
+        button.setBorder(BorderFactory.createEmptyBorder(10, 25, 10, 25));
+        button.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+    }
+
+    private static void handleFileUpload(Component parent) {
+        JFileChooser fileChooser = new JFileChooser();
+        if (fileChooser.showOpenDialog(parent) == JFileChooser.APPROVE_OPTION) {
+            String filePath = fileChooser.getSelectedFile().getAbsolutePath();
+            String fileName = fileChooser.getSelectedFile().getName(); // Get filename
+            try {
+                Map<String, Integer> results = BooleanCounterEngine.processCSVFile(filePath);
+                updateResultsDisplay(results, fileName); // Pass filename
+                cardLayout.show(cardPanel, "results");
+            } catch (IOException | IllegalArgumentException ex) {
+                JOptionPane.showMessageDialog(parent, ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+            }
         }
     }
 
-    private static void showGuiResults(Map<String, Integer> results) {
-        JFrame frame = new JFrame("Boolean Value Counts");
-        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+    private static JPanel createResultsPanel() {
+        JPanel panel = new JPanel(new BorderLayout());
+        panel.setBackground(new Color(245, 245, 245));
 
-        JTextArea textArea = new JTextArea(20, 50);
-        textArea.setEditable(false);
-        textArea.append("Boolean Value Counts:\n");
-        results.forEach((k, v) -> textArea.append(k + " -> " + v + "\n"));
+        JPanel contentPanel = new JPanel();
+        contentPanel.setLayout(new BoxLayout(contentPanel, BoxLayout.Y_AXIS));
+        contentPanel.setBackground(new Color(245, 245, 245));
 
-        JScrollPane scrollPane = new JScrollPane(textArea);
-        frame.getContentPane().add(scrollPane, BorderLayout.CENTER);
+        resultsTitleLabel = new JLabel("Analysis Results"); // Initialize class variable
+        resultsTitleLabel.setFont(new Font("Segoe UI", Font.BOLD, 36));
+        ImageIcon icon = new ImageIcon("cat-icon.png");
+        Image scaledImg = icon.getImage().getScaledInstance(32, 32, Image.SCALE_SMOOTH);
+        resultsTitleLabel.setIcon(new ImageIcon(scaledImg));
+        resultsTitleLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+        contentPanel.add(Box.createVerticalGlue());
+        contentPanel.add(resultsTitleLabel);
+        contentPanel.add(Box.createVerticalStrut(40));
 
-        frame.pack();
-        frame.setLocationRelativeTo(null);
-        frame.setVisible(true);
+        trueCountLabel = new JLabel("True Count: 0");
+        trueCountLabel.setFont(new Font("Segoe UI", Font.BOLD, 24));
+        trueCountLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+
+        falseCountLabel = new JLabel("False Count: 0");
+        falseCountLabel.setFont(new Font("Segoe UI", Font.BOLD, 24));
+        falseCountLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+
+        totalBooleansLabel = new JLabel("Total Booleans: 0");
+        totalBooleansLabel.setFont(new Font("Segoe UI", Font.BOLD, 24));
+        totalBooleansLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+
+        contentPanel.add(trueCountLabel);
+        contentPanel.add(Box.createVerticalStrut(20));
+        contentPanel.add(falseCountLabel);
+        contentPanel.add(Box.createVerticalStrut(20));
+        contentPanel.add(totalBooleansLabel);
+        contentPanel.add(Box.createVerticalGlue());
+
+        JPanel wrapper = new JPanel(new GridBagLayout());
+        wrapper.setBackground(new Color(245, 245, 245));
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.anchor = GridBagConstraints.CENTER;
+        wrapper.add(contentPanel, gbc);
+
+        JButton backButton = new JButton("Back to Main");
+        styleBackButton(backButton);
+
+        JPanel buttonPanel = new JPanel();
+        buttonPanel.setBackground(new Color(245, 245, 245));
+        buttonPanel.add(backButton);
+
+        panel.add(wrapper, BorderLayout.CENTER);
+        panel.add(buttonPanel, BorderLayout.SOUTH);
+
+        return panel;
+    }
+
+    private static void styleBackButton(JButton button) {
+        button.setFont(new Font("Segoe UI", Font.PLAIN, 20));
+        button.setPreferredSize(new Dimension(200, 50));
+        button.setBackground(new Color(108, 117, 125));
+        button.setForeground(Color.WHITE);
+        button.setFocusPainted(false);
+        button.addActionListener(e -> cardLayout.show(cardPanel, "title"));
+        button.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+    }
+
+    // Modified to accept filename parameter
+    private static void updateResultsDisplay(Map<String, Integer> results, String fileName) {
+        resultsTitleLabel.setText("Analysis Results from " + fileName); // Update title with filename
+        
+        int trueCount = results.getOrDefault("True Count", 0);
+        int falseCount = results.getOrDefault("False Count", 0);
+        int total = trueCount + falseCount;
+
+        trueCountLabel.setText("True Count: " + trueCount);
+        falseCountLabel.setText("False Count: " + falseCount);
+        totalBooleansLabel.setText("Total Booleans: " + total);
     }
 
     private static class BooleanCounterEngine {
         static Map<String, Integer> processCSVFile(String filePath) throws IOException, IllegalArgumentException {
-            List<String[]> rows = readCSVRows(filePath);
-            validateCSVContents(rows);
+            int trueCount = 0;
+            int falseCount = 0;
             
-            boolean hasHeader = detectHeader(rows.get(0));
-            List<Integer> booleanColumns = findBooleanColumns(rows, hasHeader);
-            
-            return countBooleanCombinations(rows, hasHeader, booleanColumns);
-        }
-
-        private static List<String[]> readCSVRows(String filePath) throws IOException {
-            List<String[]> rows = new ArrayList<>();
             try (BufferedReader br = new BufferedReader(new FileReader(filePath))) {
                 String line;
+                boolean headerSkipped = false;
+                
                 while ((line = br.readLine()) != null) {
-                    String[] row = line.split(",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)", -1);
-                    for (int i = 0; i < row.length; i++) {
-                        row[i] = row[i].trim().replaceAll("^\"|\"$", "");
+                    if (!headerSkipped) {
+                        headerSkipped = true;
+                        if (isHeader(line)) continue;
                     }
-                    rows.add(row);
+                    
+                    String[] values = line.split(",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)", -1);
+                    for (String value : values) {
+                        String cleanValue = value.trim().replaceAll("^\"|\"$", "").toLowerCase();
+                        if ("true".equals(cleanValue)) trueCount++;
+                        else if ("false".equals(cleanValue)) falseCount++;
+                    }
                 }
             }
-            return rows;
+
+            Map<String, Integer> results = new HashMap<>();
+            results.put("True Count", trueCount);
+            results.put("False Count", falseCount);
+            return results;
         }
 
-        private static void validateCSVContents(List<String[]> rows) {
-            if (rows.isEmpty()) {
-                throw new IllegalArgumentException("CSV file is empty");
-            }
-        }
-
-        private static boolean detectHeader(String[] firstRow) {
-            for (String cell : firstRow) {
-                String lowerCell = cell.toLowerCase();
-                if (!lowerCell.equals("true") && !lowerCell.equals("false")) {
+        private static boolean isHeader(String line) {
+            String[] values = line.split(",", -1);
+            for (String value : values) {
+                String cleanValue = value.trim().replaceAll("^\"|\"$", "").toLowerCase();
+                if (!"true".equals(cleanValue) && !"false".equals(cleanValue)) {
                     return true;
                 }
             }
             return false;
-        }
-
-        private static List<Integer> findBooleanColumns(List<String[]> rows, boolean hasHeader) {
-            List<Integer> booleanColumns = new ArrayList<>();
-            if (rows.isEmpty()) return booleanColumns;
-
-            int startRow = hasHeader ? 1 : 0;
-            int colCount = rows.get(startRow).length;
-
-            for (int col = 0; col < colCount; col++) {
-                boolean isBoolean = true;
-                for (int rowIdx = startRow; rowIdx < rows.size(); rowIdx++) {
-                    String[] row = rows.get(rowIdx);
-                    if (col >= row.length || !isValidBoolean(row[col])) {
-                        isBoolean = false;
-                        break;
-                    }
-                }
-                if (isBoolean) booleanColumns.add(col);
-            }
-            
-            if (booleanColumns.isEmpty()) {
-                throw new IllegalArgumentException("No boolean columns found");
-            }
-            return booleanColumns;
-        }
-
-        private static boolean isValidBoolean(String value) {
-            String lowerValue = value.toLowerCase();
-            return lowerValue.equals("true") || lowerValue.equals("false");
-        }
-
-        private static Map<String, Integer> countBooleanCombinations(List<String[]> rows, boolean hasHeader, 
-                                                                    List<Integer> booleanColumns) {
-            Map<String, Integer> countMap = new HashMap<>();
-            int startRow = hasHeader ? 1 : 0;
-
-            for (int i = startRow; i < rows.size(); i++) {
-                String[] row = rows.get(i);
-                List<String> combination = new ArrayList<>();
-                
-                for (int col : booleanColumns) {
-                    String value = (col < row.length) ? row[col].toLowerCase() : "false";
-                    combination.add(value);
-                }
-                
-                String key = String.join(", ", combination);
-                countMap.put(key, countMap.getOrDefault(key, 0) + 1);
-            }
-            return countMap;
         }
     }
 }
