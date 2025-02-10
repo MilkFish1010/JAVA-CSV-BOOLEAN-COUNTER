@@ -1,0 +1,186 @@
+import java.awt.*;
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
+import javax.swing.*;
+
+public class GroupBooleanCounter {
+    private static JFrame mainFrame;
+    private static CardLayout cardLayout;
+    private static JPanel cardPanel;
+    private static JLabel trueCountLabel;
+    private static JLabel falseCountLabel;
+    private static JLabel totalBooleansLabel;
+    private static JLabel resultsTitleLabel;
+
+    public static void main(String[] args) {
+        if (args.length > 0) {
+            runConsoleMode(args[0]);
+        } else {
+            SwingUtilities.invokeLater(GroupBooleanCounter::runGuiMode);
+        }
+    }
+
+    private static void runConsoleMode(String filePath) {
+        try {
+            Map<String, Integer> results = BooleanCounterEngine.processCSVFile(filePath);
+            printConsoleResults(results);
+        } catch (IOException | IllegalArgumentException e) {
+            System.err.println("Error: " + e.getMessage());
+        }
+    }
+
+    private static void printConsoleResults(Map<String, Integer> results) {
+        int trueCount = results.getOrDefault("True Count", 0);
+        int falseCount = results.getOrDefault("False Count", 0);
+        int total = trueCount + falseCount;
+        
+        System.out.println("True Count: " + trueCount);
+        System.out.println("False Count: " + falseCount);
+        System.out.println("Total Booleans: " + total);
+    }
+
+    private static void runGuiMode() {
+        mainFrame = new JFrame("Boolean Counter");
+        mainFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        mainFrame.setPreferredSize(new Dimension(1024, 768));
+        
+        cardLayout = new CardLayout();
+        cardPanel = new JPanel(cardLayout);
+
+        cardPanel.add(createTitlePanel(), "title");
+        cardPanel.add(createResultsPanel(), "results");
+
+        mainFrame.add(cardPanel);
+        mainFrame.pack();
+        mainFrame.setExtendedState(JFrame.MAXIMIZED_BOTH);
+        mainFrame.setVisible(true);
+    }
+
+    private static JPanel createTitlePanel() {
+        JPanel panel = new JPanel(new GridBagLayout());
+        panel.setBackground(new Color(245, 245, 245));
+
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.gridwidth = GridBagConstraints.REMAINDER;
+        gbc.anchor = GridBagConstraints.CENTER;
+        gbc.insets = new Insets(10, 20, 10, 20);
+
+        JLabel titleLabel = new JLabel("Boolean Counter");
+        titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 48));
+        titleLabel.setForeground(new Color(0, 0, 0));
+        panel.add(titleLabel, gbc);
+
+        JLabel creatorLabel = new JLabel("Created by Hoby Josol");
+        creatorLabel.setFont(new Font("Segoe UI", Font.ITALIC, 24));
+        creatorLabel.setForeground(new Color(128, 128, 128));
+        panel.add(creatorLabel, gbc);
+
+        JLabel descriptionLabel = new JLabel("<html><div style='text-align: center; width: 600px;'>"
+                + "This program counts occurrences of 'true' and 'false' values in a CSV file."
+                + "<br><br><b>How to use:</b><br>"
+                + "• Click the <b>Upload CSV</b> button.<br>"
+                + "• Select a CSV file containing boolean values.<br>"
+                + "• The program will display the count of 'true' and 'false' values.</div></html>");
+        descriptionLabel.setFont(new Font("Segoe UI", Font.PLAIN, 18));
+        descriptionLabel.setForeground(new Color(80, 80, 80));
+        panel.add(descriptionLabel, gbc);
+
+        JButton uploadButton = new JButton("Upload CSV");
+        styleButton(uploadButton);
+        uploadButton.addActionListener(e -> handleFileUpload(panel));
+        panel.add(uploadButton, gbc);
+
+        return panel;
+    }
+
+    private static void styleButton(JButton button) {
+        button.setFont(new Font("Segoe UI", Font.PLAIN, 24));
+        button.setPreferredSize(new Dimension(300, 80));
+        button.setBackground(new Color(108, 117, 125));
+        button.setForeground(Color.WHITE);
+        button.setFocusPainted(false);
+        button.setBorder(BorderFactory.createEmptyBorder(10, 25, 10, 25));
+        button.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        button.setOpaque(true);
+        button.setBorderPainted(false);
+
+        // Add hover effect
+        button.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mouseEntered(java.awt.event.MouseEvent evt) {
+                button.setBackground(new Color(92, 102, 109));
+            }
+
+            public void mouseExited(java.awt.event.MouseEvent evt) {
+                button.setBackground(new Color(108, 117, 125));
+            }
+        });
+    }
+
+    private static void handleFileUpload(Component parent) {
+        JFileChooser fileChooser = new JFileChooser();
+        if (fileChooser.showOpenDialog(parent) == JFileChooser.APPROVE_OPTION) {
+            String filePath = fileChooser.getSelectedFile().getAbsolutePath();
+            String fileName = fileChooser.getSelectedFile().getName();
+            try {
+                Map<String, Integer> results = BooleanCounterEngine.processCSVFile(filePath);
+                updateResultsDisplay(results, fileName);
+                cardLayout.show(cardPanel, "results");
+            } catch (IOException | IllegalArgumentException ex) {
+                JOptionPane.showMessageDialog(parent, ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+            }
+        }
+    }
+
+    private static JPanel createResultsPanel() {
+        JPanel panel = new JPanel(new BorderLayout());
+        panel.setBackground(new Color(245, 245, 245));
+
+        JPanel contentPanel = new JPanel();
+        contentPanel.setLayout(new BoxLayout(contentPanel, BoxLayout.Y_AXIS));
+        contentPanel.setBackground(new Color(245, 245, 245));
+
+        resultsTitleLabel = new JLabel("Analysis Results");
+        resultsTitleLabel.setFont(new Font("Segoe UI", Font.BOLD, 36));
+        resultsTitleLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+        contentPanel.add(Box.createVerticalGlue());
+        contentPanel.add(resultsTitleLabel);
+        contentPanel.add(Box.createVerticalStrut(40));
+
+        trueCountLabel = new JLabel("True Count: 0");
+        falseCountLabel = new JLabel("False Count: 0");
+        totalBooleansLabel = new JLabel("Total Booleans: 0");
+
+        JLabel[] labels = {trueCountLabel, falseCountLabel, totalBooleansLabel};
+        for (JLabel label : labels) {
+            label.setFont(new Font("Segoe UI", Font.BOLD, 24));
+            label.setAlignmentX(Component.CENTER_ALIGNMENT);
+            contentPanel.add(label);
+            contentPanel.add(Box.createVerticalStrut(20));
+        }
+
+        contentPanel.add(Box.createVerticalGlue());
+
+        JButton backButton = new JButton("Back to Main");
+        styleButton(backButton);
+        backButton.addActionListener(e -> cardLayout.show(cardPanel, "title"));
+
+        JPanel buttonPanel = new JPanel();
+        buttonPanel.setBackground(new Color(245, 245, 245));
+        buttonPanel.add(backButton);
+
+        panel.add(contentPanel, BorderLayout.CENTER);
+        panel.add(buttonPanel, BorderLayout.SOUTH);
+
+        return panel;
+    }
+
+    private static void updateResultsDisplay(Map<String, Integer> results, String fileName) {
+        resultsTitleLabel.setText("Analysis Results from " + fileName);
+        trueCountLabel.setText("True Count: " + results.getOrDefault("True Count", 0));
+        falseCountLabel.setText("False Count: " + results.getOrDefault("False Count", 0));
+        totalBooleansLabel.setText("Total Booleans: " + (results.getOrDefault("True Count", 0) + results.getOrDefault("False Count", 0)));
+    }
+}
